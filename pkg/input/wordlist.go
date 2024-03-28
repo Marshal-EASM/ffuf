@@ -133,7 +133,7 @@ func (w *WordlistInput) readFile(path string) error {
 		if w.config.DirSearchCompat && len(w.config.Extensions) > 0 {
 			text := reader.Text()
 			for _, ext := range w.config.Extensions {
-				re := regexp.MustCompile(fmt.Sprintf(`%s$`, ext))
+				re := regexp.MustCompile(fmt.Sprintf(`\.%s`, ext))
 				if re.Match([]byte(text)) {
 					if w.config.IgnoreWordlistComments {
 						text, ok = stripComments(text)
@@ -147,18 +147,22 @@ func (w *WordlistInput) readFile(path string) error {
 			}
 		} else if w.config.DirSearchCompat && len(w.config.ExcludedExtensions) > 0 {
 			text := reader.Text()
+			matched := false
 			for _, ext := range w.config.ExcludedExtensions {
-				re := regexp.MustCompile(fmt.Sprintf(`%s$`, ext))
-				if !re.Match([]byte(text)) {
-					if w.config.IgnoreWordlistComments {
-						text, ok = stripComments(text)
-						if !ok {
-							continue
-						}
-					}
-					data = append(data, []byte(text))
+				re := regexp.MustCompile(fmt.Sprintf(`\.%s`, ext))
+				if re.MatchString(text) {
+					matched = true
 					break
 				}
+			}
+			if !matched {
+				if w.config.IgnoreWordlistComments {
+					text, ok = stripComments(text)
+					if !ok {
+						continue
+					}
+				}
+				data = append(data, []byte(text))
 			}
 		} else {
 			text := reader.Text()
