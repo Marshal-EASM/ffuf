@@ -2,6 +2,7 @@ package input
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"regexp"
 	"strings"
@@ -128,25 +129,36 @@ func (w *WordlistInput) readFile(path string) error {
 	var data [][]byte
 	var ok bool
 	reader := bufio.NewScanner(file)
-	re := regexp.MustCompile(`(?i)%ext%`)
 	for reader.Scan() {
 		if w.config.DirSearchCompat && len(w.config.Extensions) > 0 {
-			text := []byte(reader.Text())
-			if re.Match(text) {
-				for _, ext := range w.config.Extensions {
-					contnt := re.ReplaceAll(text, []byte(ext))
-					data = append(data, []byte(contnt))
-				}
-			} else {
-				text := reader.Text()
-
-				if w.config.IgnoreWordlistComments {
-					text, ok = stripComments(text)
-					if !ok {
-						continue
+			text := reader.Text()
+			for _, ext := range w.config.Extensions {
+				re := regexp.MustCompile(fmt.Sprintf(`%s$`, ext))
+				if re.Match([]byte(text)) {
+					if w.config.IgnoreWordlistComments {
+						text, ok = stripComments(text)
+						if !ok {
+							continue
+						}
 					}
+					data = append(data, []byte(text))
+					break
 				}
-				data = append(data, []byte(text))
+			}
+		} else if w.config.DirSearchCompat && len(w.config.ExcludedExtensions) > 0 {
+			text := reader.Text()
+			for _, ext := range w.config.ExcludedExtensions {
+				re := regexp.MustCompile(fmt.Sprintf(`%s$`, ext))
+				if !re.Match([]byte(text)) {
+					if w.config.IgnoreWordlistComments {
+						text, ok = stripComments(text)
+						if !ok {
+							continue
+						}
+					}
+					data = append(data, []byte(text))
+					break
+				}
 			}
 		} else {
 			text := reader.Text()

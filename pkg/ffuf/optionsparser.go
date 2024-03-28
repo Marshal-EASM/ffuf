@@ -76,6 +76,7 @@ type InputOptions struct {
 	DirSearchCompat        bool     `json:"dirsearch_compat"`
 	Encoders               []string `json:"encoders"`
 	Extensions             string   `json:"extensions"`
+	ExcludedExtensions     string   `json:"excluded_extensions"`
 	IgnoreWordlistComments bool     `json:"ignore_wordlist_comments"`
 	InputMode              string   `json:"input_mode"`
 	InputNum               int      `json:"input_num"`
@@ -184,7 +185,7 @@ func NewConfigOptions() *ConfigOptions {
 // ConfigFromOptions parses the values in ConfigOptions struct, ensures that the values are sane,
 // and creates a Config struct out of them.
 func ConfigFromOptions(parseOpts *ConfigOptions, ctx context.Context, cancel context.CancelFunc) (*Config, error) {
-	//TODO: refactor in a proper flag library that can handle things like required flags
+	// TODO: refactor in a proper flag library that can handle things like required flags
 	errs := NewMultierror()
 	conf := NewConfig(ctx, cancel)
 
@@ -193,11 +194,20 @@ func ConfigFromOptions(parseOpts *ConfigOptions, ctx context.Context, cancel con
 	if len(parseOpts.HTTP.URL) == 0 && parseOpts.Input.Request == "" {
 		errs.Add(fmt.Errorf("-u flag or -request flag is required"))
 	}
-
+	// check extensions
+	if parseOpts.Input.Extensions != "" && parseOpts.Input.ExcludedExtensions != "" {
+		errs.Add(fmt.Errorf("cannot use -e and -ee at the same time"))
+	}
 	// prepare extensions
 	if parseOpts.Input.Extensions != "" {
 		extensions := strings.Split(parseOpts.Input.Extensions, ",")
 		conf.Extensions = extensions
+	}
+
+	// prepare excluded extensions
+	if parseOpts.Input.ExcludedExtensions != "" {
+		excludedExtensions := strings.Split(parseOpts.Input.ExcludedExtensions, ",")
+		conf.ExcludedExtensions = excludedExtensions
 	}
 
 	// Convert cookies to a header
@@ -205,7 +215,7 @@ func ConfigFromOptions(parseOpts *ConfigOptions, ctx context.Context, cancel con
 		parseOpts.HTTP.Headers = append(parseOpts.HTTP.Headers, "Cookie: "+strings.Join(parseOpts.HTTP.Cookies, "; "))
 	}
 
-	//Prepare inputproviders
+	// Prepare inputproviders
 	conf.InputMode = parseOpts.Input.InputMode
 
 	validmode := false
@@ -355,7 +365,7 @@ func ConfigFromOptions(parseOpts *ConfigOptions, ctx context.Context, cancel con
 		}
 	}
 
-	//Prepare URL
+	// Prepare URL
 	if parseOpts.HTTP.URL != "" {
 		conf.Url = parseOpts.HTTP.URL
 	}
@@ -373,7 +383,7 @@ func ConfigFromOptions(parseOpts *ConfigOptions, ctx context.Context, cancel con
 		conf.ClientKey = parseOpts.HTTP.ClientKey
 	}
 
-	//Prepare headers and make canonical
+	// Prepare headers and make canonical
 	for _, v := range parseOpts.HTTP.Headers {
 		hs := strings.SplitN(v, ":", 2)
 		if len(hs) == 2 {
@@ -404,7 +414,7 @@ func ConfigFromOptions(parseOpts *ConfigOptions, ctx context.Context, cancel con
 		}
 	}
 
-	//Prepare delay
+	// Prepare delay
 	d := strings.Split(parseOpts.General.Delay, "-")
 	if len(d) > 2 {
 		errs.Add(fmt.Errorf("Delay needs to be either a single float: \"0.1\" or a range of floats, delimited by dash: \"0.1-0.8\""))
@@ -445,9 +455,9 @@ func ConfigFromOptions(parseOpts *ConfigOptions, ctx context.Context, cancel con
 		}
 	}
 
-	//Check the output file format option
+	// Check the output file format option
 	if parseOpts.Output.OutputFile != "" {
-		//No need to check / error out if output file isn't defined
+		// No need to check / error out if output file isn't defined
 		outputFormats := []string{"all", "json", "ejson", "html", "md", "csv", "ecsv"}
 		found := false
 		for _, f := range outputFormats {
@@ -570,7 +580,7 @@ func ConfigFromOptions(parseOpts *ConfigOptions, ctx context.Context, cancel con
 	// Handle copy as curl situation where POST method is implied by --data flag. If method is set to anything but GET, NOOP
 	if len(conf.Data) > 0 &&
 		conf.Method == "GET" &&
-		//don't modify the method automatically if a request file is being used as input
+		// don't modify the method automatically if a request file is being used as input
 		len(parseOpts.Input.Request) == 0 {
 
 		conf.Method = "POST"
@@ -694,7 +704,7 @@ func parseRawRequest(parseOpts *ConfigOptions, conf *Config) error {
 }
 
 func keywordPresent(keyword string, conf *Config) bool {
-	//Search for keyword from HTTP method, URL and POST data too
+	// Search for keyword from HTTP method, URL and POST data too
 	if strings.Contains(conf.Method, keyword) {
 		return true
 	}

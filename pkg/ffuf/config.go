@@ -22,6 +22,7 @@ type Config struct {
 	DirSearchCompat           bool                  `json:"dirsearch_compatibility"`
 	Encoders                  []string              `json:"encoders"`
 	Extensions                []string              `json:"extensions"`
+	ExcludedExtensions        []string              `json:"excluded_extensions"`
 	FilterMode                string                `json:"fmode"`
 	FollowRedirects           bool                  `json:"follow_redirects"`
 	Headers                   map[string]string     `json:"headers"`
